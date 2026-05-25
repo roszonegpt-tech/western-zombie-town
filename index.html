@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Dead Dust Gulch</title>
+  <style>
+    html, body { margin:0; width:100%; height:100%; overflow:hidden; background:#6f3a21; font-family:Georgia,'Times New Roman',serif; }
+    #game { width:100vw; height:100vh; display:block; }
+    #ui { position:absolute; top:14px; left:14px; z-index:20; color:#ffe6a8; text-shadow:0 2px 4px #000; pointer-events:none; }
+    #ui h1 { margin:0 0 8px; font-size:30px; color:#ffd16d; }
+    #stats { display:flex; gap:8px; flex-wrap:wrap; }
+    .pill { background:rgba(45,20,8,.72); border:2px solid rgba(255,220,128,.52); border-radius:999px; padding:7px 11px; font-weight:bold; box-shadow:0 4px 12px rgba(0,0,0,.25); }
+    #help { margin-top:8px; max-width:420px; background:rgba(30,12,6,.62); padding:10px; border-radius:10px; font-family:Arial,sans-serif; font-size:14px; line-height:1.28; }
+    #message { position:absolute; left:50%; bottom:28px; transform:translateX(-50%); z-index:30; background:rgba(45,20,8,.8); color:#ffe6a8; padding:12px 18px; border-radius:13px; border:2px solid rgba(255,220,128,.45); box-shadow:0 8px 20px rgba(0,0,0,.28); font-family:Arial,sans-serif; }
+    #crosshair { position:absolute; width:18px; height:18px; margin-left:-9px; margin-top:-9px; border:2px solid rgba(255,255,255,.8); border-radius:50%; pointer-events:none; z-index:25; mix-blend-mode:screen; }
+    #spriteToggle { position:absolute; top:15px; right:15px; z-index:60; padding:9px 14px; border-radius:999px; border:2px solid rgba(255,225,150,.6); background:rgba(54,22,8,.72); color:#ffe6ae; font-weight:bold; font-family:Georgia,'Times New Roman',serif; }
+    #spritePanel { position:absolute; top:62px; right:15px; z-index:59; width:315px; max-height:76vh; overflow:auto; display:none; color:#ffe6ae; background:rgba(38,16,7,.88); border:2px solid rgba(255,210,122,.55); border-radius:16px; padding:12px; box-shadow:0 12px 34px rgba(0,0,0,.35); font-family:Arial,sans-serif; font-size:13px; }
+    #spritePanel.open { display:block; }
+    #spritePanel h3 { margin:0 0 8px; color:#ffd27a; font-family:Georgia,'Times New Roman',serif; font-size:19px; }
+    .spriteRow { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,.12); }
+    .spriteRow label { font-weight:bold; }
+    .spriteRow input { width:112px; font-size:11px; color:#ffe6ae; }
+    #spriteStatus { margin-top:8px; line-height:1.35; color:#fff1c5; }
+    #mobileControls { position:absolute; inset:0; z-index:35; pointer-events:none; touch-action:none; user-select:none; }
+    #movePad { position:absolute; left:26px; bottom:34px; width:150px; height:150px; border-radius:50%; background:rgba(44,19,8,.34); border:2px solid rgba(255,225,150,.45); box-shadow:inset 0 0 24px rgba(0,0,0,.28),0 8px 28px rgba(0,0,0,.25); pointer-events:auto; touch-action:none; }
+    #moveKnob { position:absolute; left:50%; top:50%; width:58px; height:58px; margin-left:-29px; margin-top:-29px; border-radius:50%; background:rgba(255,210,122,.72); border:2px solid rgba(65,28,10,.65); box-shadow:0 6px 16px rgba(0,0,0,.35); transform:translate(0,0); }
+    #actionButtons { position:absolute; right:26px; bottom:38px; display:grid; grid-template-columns:82px 82px; grid-template-rows:82px 82px; gap:14px; pointer-events:auto; }
+    .mobileBtn { border-radius:50%; border:2px solid rgba(255,225,150,.55); background:rgba(54,22,8,.68); color:#ffe6ae; font-family:Georgia,'Times New Roman',serif; font-size:15px; font-weight:bold; text-shadow:0 2px 3px rgba(0,0,0,.75); box-shadow:0 8px 24px rgba(0,0,0,.32); touch-action:none; }
+    .mobileBtn.down { transform:scale(.94); background:rgba(156,70,25,.82); }
+    #btnShoot { grid-column:2; grid-row:1; background:rgba(119,43,15,.78); }
+    #btnReset { grid-column:1; grid-row:2; }
+    #btnPause { grid-column:2; grid-row:2; }
+    #gameOver { position:absolute; inset:0; z-index:80; display:none; align-items:center; justify-content:center; color:#ffe6ae; background:rgba(0,0,0,.58); text-align:center; }
+    #gameOver .box { background:rgba(42,17,7,.9); padding:26px; border-radius:18px; border:2px solid rgba(255,210,122,.58); }
+    #gameOver h2 { margin:0 0 10px; font-size:42px; color:#ffd27a; }
+    @media (pointer:fine) and (min-width:900px){ #mobileControls.mobileOnly{display:none;} }
+    @media (max-width:720px){ #ui h1{font-size:22px;} #help{display:none;} #spritePanel{top:58px; right:10px; left:10px; width:auto; max-height:58vh;} #movePad{width:128px;height:128px;left:18px;bottom:22px;} #moveKnob{width:50px;height:50px;margin-left:-25px;margin-top:-25px;} #actionButtons{right:18px;bottom:24px;grid-template-columns:72px 72px;grid-template-rows:72px 72px;gap:12px;} .mobileBtn{font-size:13px;} }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <div id="ui">
+    <h1>Dead Dust Gulch</h1>
+    <div id="stats"><div class="pill">Health: <span id="health">100</span></div><div class="pill">Zombies: <span id="zombies">0</span></div><div class="pill">Score: <span id="score">0</span></div></div>
+    <div id="help">Move: WASD / Arrow Keys<br>Aim: Mouse &nbsp; Shoot: Click / Space<br>Sprites load from <b>assets/sprites/</b>. Keep the batch uploader as backup.</div>
+  </div>
+  <button id="spriteToggle" type="button">SPRITES</button>
+  <div id="spritePanel">
+    <h3>Load Real Sprites</h3>
+    <div style="margin-bottom:10px;padding:8px;border:1px solid rgba(255,255,255,.18);border-radius:10px;background:rgba(0,0,0,.18);">
+      <label style="display:block;font-weight:bold;margin-bottom:5px;">Batch upload named PNGs</label>
+      <input id="batchUpload" type="file" accept="image/png,image/jpeg,image/webp" multiple>
+      <div style="font-size:12px;opacity:.9;margin-top:5px;">Checks names like cowboy_idle.png and zombie_walk.png.</div>
+    </div>
+    <div id="singleRows"></div>
+    <div id="spriteStatus">Trying to load assets/sprites automatically...</div>
+  </div>
+  <div id="crosshair"></div>
+  <div id="mobileControls" class="mobileOnly"><div id="movePad"><div id="moveKnob"></div></div><div id="actionButtons"><button id="btnShoot" class="mobileBtn">SHOOT</button><button id="btnReset" class="mobileBtn">RESET</button><button id="btnPause" class="mobileBtn">PAUSE</button></div></div>
+  <div id="message">Loading...</div>
+  <div id="gameOver"><div class="box"><h2 id="gameOverTitle">Game Over</h2><p id="gameOverText"></p><p>Press R or RESET to restart.</p></div></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+  (() => {
+    const canvas = document.getElementById('game');
+    const healthEl = document.getElementById('health');
+    const zombiesEl = document.getElementById('zombies');
+    const scoreEl = document.getElementById('score');
+    const msg = document.getElementById('message');
+    const crosshair = document.getElementById('crosshair');
+    const spriteToggle = document.getElementById('spriteToggle');
+    const spritePanel = document.getElementById('spritePanel');
+    const spriteStatus = document.getElementById('spriteStatus');
+    const singleRows = document.getElementById('singleRows');
+    const batchUpload = document.getElementById('batchUpload');
+    const movePad = document.getElementById('movePad');
+    const moveKnob = document.getElementById('moveKnob');
+    const btnShoot = document.getElementById('btnShoot');
+    const btnReset = document.getElementById('btnReset');
+    const btnPause = document.getElementById('btnPause');
+    const gameOver = document.getElementById('gameOver');
+    const gameOverTitle = document.getElementById('gameOverTitle');
+    const gameOverText = document.getElementById('gameOverText');
+
+    const EXPECTED = {
+      cowboy_idle: ['cowboy','idle'], cowboy_walk: ['cowboy','walk'], cowboy_shoot: ['cowboy','shoot'], cowboy_hurt: ['cowboy','hurt'], cowboy_die: ['cowboy','die'],
+      zombie_idle: ['zombie','idle'], zombie_walk: ['zombie','walk'], zombie_hurt: ['zombie','hurt'], zombie_die: ['zombie','die']
+    };
+    const CONFIG = {
+      cowboy: { idle:{src:'assets/sprites/cowboy_idle.png',cols:6,rows:8,fps:4,loop:true}, walk:{src:'assets/sprites/cowboy_walk.png',cols:6,rows:8,fps:8,loop:true}, shoot:{src:'assets/sprites/cowboy_shoot.png',cols:6,rows:8,fps:10,loop:false}, hurt:{src:'assets/sprites/cowboy_hurt.png',cols:6,rows:8,fps:10,loop:false}, die:{src:'assets/sprites/cowboy_die.png',cols:6,rows:8,fps:8,loop:false} },
+      zombie: { idle:{src:'assets/sprites/zombie_idle.png',cols:6,rows:8,fps:4,loop:true}, walk:{src:'assets/sprites/zombie_walk.png',cols:6,rows:8,fps:6,loop:true}, hurt:{src:'assets/sprites/zombie_hurt.png',cols:6,rows:8,fps:10,loop:false}, die:{src:'assets/sprites/zombie_die.png',cols:6,rows:8,fps:8,loop:false} }
+    };
+    const DIRS = { south:0, southWest:1, west:2, northWest:3, north:4, northEast:5, east:6, southEast:7 };
+    const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:false});
+    renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(innerWidth, innerHeight); renderer.shadowMap.enabled = true;
+    const scene = new THREE.Scene(); scene.background = new THREE.Color(0x8d4c31); scene.fog = new THREE.Fog(0x8d4c31, 28, 82);
+    const camera = new THREE.PerspectiveCamera(48, innerWidth/innerHeight, .1, 180); camera.position.set(0,32,32); camera.lookAt(0,0,0);
+    scene.add(new THREE.HemisphereLight(0xffe0a0,0x3b1f16,1.4)); const sun = new THREE.DirectionalLight(0xffd28a,1.8); sun.position.set(-18,32,16); sun.castShadow=true; scene.add(sun);
+
+    const world = { paused:false, missing:true, gameOver:false, score:0, spawn:0, minX:-34,maxX:34,minZ:-34,maxZ:34 };
+    const keys = {}; const bullets=[]; const zombies=[]; const particles=[]; let sprites={cowboy:{},zombie:{}}; const texCache = new WeakMap();
+    const mobile = {x:0,y:0,active:false,id:null};
+    const player = {pos:new THREE.Vector3(0,0,10), dir:new THREE.Vector3(0,0,1), aim:new THREE.Vector3(0,0,1), hp:100, action:'idle', walk:0, cooldown:0, sprite:null};
+
+    function box(w,h,d,color,x,y,z){ const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color,roughness:.75})); m.position.set(x,y,z); m.castShadow=true; m.receiveShadow=true; scene.add(m); return m; }
+    function buildTown(){
+      box(82,.35,76,0xffe26b,0,-.2,0); box(16,.38,76,0xd99a48,0,.02,0);
+      for(let z=-31; z<33; z+=7) box(.22,.05,2.4,0xfff0a8,0,.25,z);
+      for(let side of [-1,1]) for(let z=-30; z<=30; z+=4.8) box(21,.08,.16,0xa94720,side*20,.15,z);
+      const buildings=[[-19,-21,'BANK',0xd9904c],[-19,-3,'GENERAL',0x9f6841],[-18,17,'SALOON',0xf06a2b],[19,-16,'STABLE',0xf28a31],[20,4,'GUNSMITH',0xff7a2d],[19,22,'JAIL',0xc9aa73]];
+      for(const [x,z,name,col] of buildings){ box(10,4.6,7,col,x,2.3,z); box(11,1,8,0xb94922,x,5,z-.4); box(7,.9,.25,0x5b2b18,x,5.25,z-4.15); const c=document.createElement('canvas'); c.width=256;c.height=64; const g=c.getContext('2d'); g.fillStyle='#6b341c'; g.fillRect(0,0,256,64); g.strokeStyle='#ffd98a'; g.lineWidth=8; g.strokeRect(8,8,240,48); g.fillStyle='#fff0ba'; g.font='bold 26px Georgia'; g.textAlign='center'; g.fillText(name,128,42); const t=new THREE.CanvasTexture(c); const sign=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true})); sign.scale.set(5,1.25,1); sign.position.set(x,5.35,z-4.3); scene.add(sign); box(1.5,2.1,.25,0x6f2f18,x,1.05,z-3.65); }
+      for(let i=0;i<26;i++){ const x=(Math.random()<.5?-1:1)*(25+Math.random()*10); const z=-30+Math.random()*60; const cactus=box(.35,2.5,.35,0x3fa65b,x,1.25,z); box(1.8,.25,.25,0x3fa65b,x,1.7,z); }
+    }
+    function loadImage(src){ return new Promise((res,rej)=>{ const img=new Image(); img.crossOrigin='anonymous'; img.onload=()=>res(img); img.onerror=()=>rej(new Error(src)); img.src=src; }); }
+    function keyPink(c){ const ctx=c.getContext('2d'), id=ctx.getImageData(0,0,c.width,c.height), d=id.data; for(let i=0;i<d.length;i+=4){ const r=d[i],g=d[i+1],b=d[i+2]; if((r>145&&b>115&&g<115&&r>g*1.55&&b>g*1.25) || Math.hypot(r-255,g,b-255)<95) d[i+3]=0; } ctx.putImageData(id,0,0); }
+    function bounds(c){ const ctx=c.getContext('2d'), id=ctx.getImageData(0,0,c.width,c.height).data; let minX=c.width,minY=c.height,maxX=-1,maxY=-1; for(let y=0;y<c.height;y++) for(let x=0;x<c.width;x++){ if(id[(y*c.width+x)*4+3]>8){ minX=Math.min(minX,x); minY=Math.min(minY,y); maxX=Math.max(maxX,x); maxY=Math.max(maxY,y); } } return maxX<minX?null:{x:minX,y:minY,w:maxX-minX+1,h:maxY-minY+1,cx:(minX+maxX)/2,by:maxY}; }
+    function trim(c,p=8){ const b=bounds(c); if(!b)return c; const x=Math.max(0,b.x-p), y=Math.max(0,b.y-p), r=Math.min(c.width,b.x+b.w+p), bo=Math.min(c.height,b.y+b.h+p); const o=document.createElement('canvas'); o.width=r-x; o.height=bo-y; o.getContext('2d').drawImage(c,x,y,o.width,o.height,0,0,o.width,o.height); return o; }
+    function stabilize(frames){ let mw=1,mh=1; for(const row of frames)for(const f of row){ const b=bounds(f); if(b){mw=Math.max(mw,b.w); mh=Math.max(mh,b.h);} } const outW=mw+56,outH=mh+56; return frames.map(row=>row.map(f=>{ const b=bounds(f), o=document.createElement('canvas'); o.width=outW;o.height=outH; const g=o.getContext('2d'); if(b) g.drawImage(f,Math.round(outW*.5-b.cx),Math.round(outH*.92-b.by)); return o; })); }
+    function slice(sheet,cfg){ const frames=[]; const fw=Math.floor(sheet.width/cfg.cols), fh=Math.floor(sheet.height/cfg.rows); for(let r=0;r<cfg.rows;r++){ const row=[]; for(let col=0;col<cfg.cols;col++){ const f=document.createElement('canvas'); f.width=fw; f.height=fh; f.getContext('2d').drawImage(sheet,col*fw,r*fh,fw,fh,0,0,fw,fh); row.push(trim(f,8)); } frames.push(row); } return stabilize(frames); }
+    async function loadState(actor,state,src){ const cfg={...CONFIG[actor][state],src}; const img=await loadImage(src); const sheet=document.createElement('canvas'); sheet.width=img.width; sheet.height=img.height; sheet.getContext('2d').drawImage(img,0,0); keyPink(sheet); sprites[actor][state]={...cfg,frames:slice(sheet,cfg)}; }
+    async function autoLoad(){ let missing=[]; for(const actor of ['cowboy','zombie']) for(const state of Object.keys(CONFIG[actor])){ try{ await loadState(actor,state,CONFIG[actor][state].src); } catch(e){ missing.push(actor+'.'+state); } } updateSpriteStatus(missing); }
+    function missingStates(){ const m=[]; for(const actor of ['cowboy','zombie']) for(const state of Object.keys(CONFIG[actor])) if(!sprites[actor][state]) m.push(actor+'.'+state); return m; }
+    function updateSpriteStatus(extraMissing){ const miss=extraMissing||missingStates(); world.missing=miss.length>0; spriteStatus.innerHTML = world.missing ? 'Missing: '+miss.join(', ')+'<br>Upload PNGs or add them to assets/sprites/.' : 'All required sheets loaded. Game running.'; msg.textContent = world.missing ? 'Missing sprites. Tap SPRITES or add assets/sprites files.' : 'All real sprites loaded. Game running.'; }
+    function fileToURL(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=()=>rej(r.error); r.readAsDataURL(file); }); }
+    function norm(n){ return n.toLowerCase().trim().replace(/\s+/g,'_').replace(/-/g,'_').replace(/\.(png|jpg|jpeg|webp)$/,''); }
+    async function batch(files){ const skipped=[],matched=[]; for(const file of Array.from(files)){ const hit=EXPECTED[norm(file.name)]; if(!hit){ skipped.push(file.name); continue; } await loadState(hit[0],hit[1],await fileToURL(file)); matched.push(hit[0]+'.'+hit[1]); } const miss=missingStates(); spriteStatus.innerHTML='Matched: '+(matched.join(', ')||'none')+(skipped.length?'<br>Skipped: '+skipped.join(', '):'')+'<br>'+(miss.length?'Missing: '+miss.join(', '):'All required sheets loaded.'); updateSpriteStatus(miss); }
+    function frame(actor,state,dir,t){ const s=sprites[actor]?.[state]; if(!s) return null; const r=DIRS[dir]??0, c=Math.max(0,Math.min(s.cols-1,Math.floor(t)%s.cols)); return s.frames[Math.min(r,s.rows-1)]?.[c]; }
+    function textureFor(c){ if(!c)return null; if(texCache.has(c)) return texCache.get(c); const t=new THREE.CanvasTexture(c); t.magFilter=THREE.NearestFilter; t.minFilter=THREE.NearestFilter; t.generateMipmaps=false; texCache.set(c,t); return t; }
+    function apply(sprite,c,h){ if(!c){sprite.visible=false; return;} const t=textureFor(c); sprite.material.map=t; sprite.material.transparent=true; sprite.material.depthWrite=false; sprite.material.needsUpdate=true; sprite.visible=true; sprite.scale.set(h*(c.width/c.height),h,1); }
+    function dirFrom(v){ const deg=(Math.atan2(v.x,v.z)*180/Math.PI+360)%360; if(deg>=337.5||deg<22.5)return'south'; if(deg<67.5)return'southEast'; if(deg<112.5)return'east'; if(deg<157.5)return'northEast'; if(deg<202.5)return'north'; if(deg<247.5)return'northWest'; if(deg<292.5)return'west'; return'southWest'; }
+    function makeSprite(h=2){ const sp=new THREE.Sprite(new THREE.SpriteMaterial({transparent:true,depthWrite:false})); sp.scale.set(h,h,1); scene.add(sp); return sp; }
+    function spawnZombie(){ const edge=Math.floor(Math.random()*4); let x,z; if(edge===0){x=-30;z=-28+Math.random()*56}else if(edge===1){x=30;z=-28+Math.random()*56}else if(edge===2){x=-28+Math.random()*56;z=-30}else{x=-28+Math.random()*56;z=30} const zed={pos:new THREE.Vector3(x,0,z),hp:3,walk:Math.random()*10,hit:0,sprite:makeSprite(1.85)}; zombies.push(zed); }
+    function shoot(){ if(world.gameOver||world.missing||player.cooldown>0)return; player.cooldown=.24; player.action='shoot'; const b={pos:player.pos.clone().add(new THREE.Vector3(0,1.1,0)), vel:player.aim.clone().multiplyScalar(22), life:.9, mesh:box(.16,.16,.16,0xfff0a3,player.pos.x,1.1,player.pos.z)}; bullets.push(b); }
+    function reset(){ world.score=0; player.hp=100; player.pos.set(0,0,10); world.gameOver=false; gameOver.style.display='none'; bullets.splice(0).forEach(b=>scene.remove(b.mesh)); zombies.splice(0).forEach(z=>scene.remove(z.sprite)); for(let i=0;i<10;i++) spawnZombie(); }
+    function end(win){ world.gameOver=true; gameOver.style.display='flex'; gameOverTitle.textContent=win?'Town Saved':'You Got Bit'; gameOverText.textContent=win?'The street is clear for now.':'The dead took Dead Dust Gulch.'; }
+    player.sprite=makeSprite(2.05); buildTown(); reset(); autoLoad();
+    function update(dt){ if(world.gameOver||world.paused)return; if(!world.missing){ const mv=new THREE.Vector3(); if(keys.KeyW||keys.ArrowUp)mv.z-=1; if(keys.KeyS||keys.ArrowDown)mv.z+=1; if(keys.KeyA||keys.ArrowLeft)mv.x-=1; if(keys.KeyD||keys.ArrowRight)mv.x+=1; mv.x+=mobile.x; mv.z+=mobile.y; if(mv.lengthSq()>0){mv.normalize(); player.pos.addScaledVector(mv,dt*7); player.dir.copy(mv); player.walk+=dt; player.action='walk';} else player.action='idle'; player.pos.x=THREE.MathUtils.clamp(player.pos.x,world.minX,world.maxX); player.pos.z=THREE.MathUtils.clamp(player.pos.z,world.minZ,world.maxZ); if(keys.Space) shoot(); }
+      player.cooldown=Math.max(0,player.cooldown-dt); player.sprite.position.set(player.pos.x,1.05,player.pos.z); const ps=player.cooldown>0?'shoot':player.action; apply(player.sprite,frame('cowboy',ps,dirFrom(ps==='shoot'?player.aim:player.dir),player.walk*(sprites.cowboy[ps]?.fps||8)),2.05);
+      for(let i=bullets.length-1;i>=0;i--){ const b=bullets[i]; b.life-=dt; b.pos.addScaledVector(b.vel,dt); b.mesh.position.copy(b.pos); if(b.life<=0){scene.remove(b.mesh); bullets.splice(i,1); continue;} for(let j=zombies.length-1;j>=0;j--){ const z=zombies[j]; if(z.pos.distanceTo(b.pos)<.95){ z.hp--; z.hit=.25; scene.remove(b.mesh); bullets.splice(i,1); if(z.hp<=0){world.score+=20; scene.remove(z.sprite); zombies.splice(j,1);} break;} } }
+      for(const z of zombies){ const to=player.pos.clone().sub(z.pos); const d=to.length(); if(!world.missing && d>.1){to.normalize(); z.pos.addScaledVector(to,dt*2.2); z.walk+=dt;} if(d<1.35){ player.hp-=dt*18; if(player.hp<=0) end(false); } z.hit=Math.max(0,z.hit-dt); z.sprite.position.set(z.pos.x,.92,z.pos.z); apply(z.sprite,frame('zombie',z.hit>0?'hurt':'walk',dirFrom(player.pos.clone().sub(z.pos)),z.walk*(sprites.zombie.walk?.fps||6)),1.85); }
+      world.spawn+=dt; if(!world.missing && world.spawn>4 && zombies.length<12){world.spawn=0;spawnZombie();}
+      healthEl.textContent=Math.max(0,Math.round(player.hp)); zombiesEl.textContent=zombies.length; scoreEl.textContent=world.score; camera.position.lerp(new THREE.Vector3(player.pos.x,32,player.pos.z+32),.06); camera.lookAt(player.pos.x,0,player.pos.z); }
+    let last=performance.now(); function loop(now){ const dt=Math.min(.05,(now-last)/1000); last=now; update(dt); renderer.render(scene,camera); requestAnimationFrame(loop); } loop(last);
+    addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight);});
+    addEventListener('keydown',e=>{keys[e.code]=true; if(e.code==='KeyR')reset();}); addEventListener('keyup',e=>keys[e.code]=false);
+    addEventListener('pointermove',e=>{ crosshair.style.left=e.clientX+'px'; crosshair.style.top=e.clientY+'px'; const ndc=new THREE.Vector2(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1); const ray=new THREE.Raycaster(); ray.setFromCamera(ndc,camera); const plane=new THREE.Plane(new THREE.Vector3(0,1,0),0); const hit=new THREE.Vector3(); ray.ray.intersectPlane(plane,hit); player.aim.copy(hit.sub(player.pos)); if(player.aim.lengthSq()>0) player.aim.normalize(); });
+    addEventListener('pointerdown',e=>{ if(e.target===canvas) shoot(); }); spriteToggle.onclick=()=>spritePanel.classList.toggle('open'); batchUpload.onchange=e=>batch(e.target.files);
+    for(const key of Object.keys(EXPECTED)){ const [actor,state]=EXPECTED[key]; const row=document.createElement('div'); row.className='spriteRow'; row.innerHTML='<label>'+actor+' '+state+'</label><input type="file" accept="image/png,image/jpeg,image/webp">'; row.querySelector('input').onchange=async e=>{ const f=e.target.files[0]; if(f){ await loadState(actor,state,await fileToURL(f)); updateSpriteStatus(); }}; singleRows.appendChild(row); }
+    function knob(x,y){ moveKnob.style.transform=`translate(${x}px,${y}px)`; } function pad(e){ const r=movePad.getBoundingClientRect(), cx=r.left+r.width/2, cy=r.top+r.height/2, max=r.width*.34; let dx=e.clientX-cx,dy=e.clientY-cy,l=Math.hypot(dx,dy); if(l>max){dx=dx/l*max;dy=dy/l*max;} mobile.x=dx/max; mobile.y=dy/max; knob(dx,dy); }
+    movePad.onpointerdown=e=>{mobile.active=true;mobile.id=e.pointerId;movePad.setPointerCapture(e.pointerId);pad(e);}; movePad.onpointermove=e=>{if(mobile.active&&e.pointerId===mobile.id)pad(e);}; movePad.onpointerup=movePad.onpointercancel=()=>{mobile.active=false;mobile.x=mobile.y=0;knob(0,0);};
+    btnShoot.onpointerdown=e=>{e.preventDefault();btnShoot.classList.add('down');shoot();}; btnShoot.onpointerup=()=>btnShoot.classList.remove('down'); btnReset.onclick=reset; btnPause.onclick=()=>{world.paused=!world.paused;btnPause.textContent=world.paused?'RESUME':'PAUSE';msg.textContent=world.paused?'Paused.':'Back in the dust.';};
+  })();
+  </script>
+</body>
+</html>
